@@ -1,0 +1,68 @@
+{
+  "name": "Music Discovery Assistant",
+  "description": "An intuitive assistant for music fans to explore artist and band connections, discover side projects, and view band rosters.",
+  "system_prompt": "You are a knowledgeable music enthusiast. Your responses should be conversational, easy to understand, and structured like you're explaining a band's family tree or a musical connection. Focus on making music discovery fun and accessible.",
+  "is_private": true,
+  "is_mcp_enabled": false,
+  "tools": [
+    {
+      "name": "Find Music Entity Connection Path",
+      "description": "Discovers how two musical entities (artists or bands) are connected through shared members or projects in the music network. Provide the exact names of the entities you want to connect, whether they are artists or bands.",
+      "enabled": true,
+      "type": "cypherTemplate",
+      "config": {
+        "template": "MATCH (n1) WHERE (n1:Artist AND n1.ArtistName = $entity1_name) OR (n1:Band AND n1.name = $entity1_name) WITH n1 MATCH (n2) WHERE (n2:Artist AND n2.ArtistName = $entity2_name) OR (n2:Band AND n2.name = $entity2_name) OPTIONAL MATCH p = shortestPath((n1)-[:MEMBER_OF*..5]-(n2)) RETURN n1, n2, p",
+        "parameters": [
+          {
+            "name": "entity1_name",
+            "data_type": "string",
+            "description": "The exact name of the first artist or band (e.g., 'Dave Grohl', 'Queens of the Stone Age')."
+          },
+          {
+            "name": "entity2_name",
+            "data_type": "string",
+            "description": "The exact name of the second artist or band (e.g., 'Stevie Nicks', 'Them Crooked Vultures')."
+          }
+        ]
+      }
+    },
+    {
+      "name": "Explore Bands by Member's Other Projects",
+      "description": "Discover other bands or side projects involving musicians from a specified band. Useful for finding supergroups, side projects, or new music from familiar artists. Provide the exact name of the source band.",
+      "enabled": true,
+      "type": "cypherTemplate",
+      "config": {
+        "template": "MATCH (b1:Band {name: $source_band_name})<-[:MEMBER_OF]-(a:Artist)-[m:MEMBER_OF]->(b2:Band) WHERE b1 <> b2 RETURN b2.name AS otherBand, collect(DISTINCT a.ArtistName) AS members, collect(DISTINCT m.Role) AS roles, collect(DISTINCT m.Connection) AS connections ORDER BY otherBand LIMIT 10",
+        "parameters": [
+          {
+            "name": "source_band_name",
+            "data_type": "string",
+            "description": "The exact name of the band (e.g., 'The Strokes') whose members' other projects you want to explore."
+          }
+        ]
+      }
+    },
+    {
+      "name": "Get Band Roster and Musical Roles",
+      "description": "Details the artists who are members of a specific band, including their musical roles (e.g., 'guitarist', 'vocalist') and connection types (e.g., 'founder', 'guest'). Provide the exact name of the band.",
+      "enabled": true,
+      "type": "cypherTemplate",
+      "config": {
+        "template": "MATCH (a:Artist)-[r:MEMBER_OF]->(b:Band {name: $band_name}) RETURN a.ArtistName AS artistName, r.Role AS role, r.Connection AS connection ORDER BY artistName",
+        "parameters": [
+          {
+            "name": "band_name",
+            "data_type": "string",
+            "description": "The exact name of the band (e.g., 'Foo Fighters') for which to retrieve the roster and roles."
+          }
+        ]
+      }
+    },
+    {
+      "name": "Natural Language to Cypher Tool",
+      "description": "A general-purpose, free-form Text-to-Cypher tool that converts natural language questions into Cypher queries, executes them, and returns the results. Use this option when no specialized tool (e.g. for aggregation or domain-specific logic) is more appropriate.",
+      "enabled": true,
+      "type": "text2cypher"
+    }
+  ]
+}
