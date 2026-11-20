@@ -3,8 +3,10 @@
 :param {
   // Define the file path root and the individual file names required for loading.
   // https://neo4j.com/docs/operations-manual/current/configuration/file-locations/
-  file_path_root: 'file:///', // Change this to the folder your script can access the files at.
-  file_0: 'music_connections.csv'
+  // Aura cannot read file:/// paths from your computer, so the CSV is loaded from this GitHub repo.
+  // For a local Neo4j install, use 'file:///' and put the CSV in the database's import folder.
+  file_path_root: 'https://raw.githubusercontent.com/giselle-ajanel/music_discovery_agent/main/',
+  file_0: 'music_connections_expanded.csv' // 1,028 artists, 210 bands, 1,142 memberships
 };
 
 // CONSTRAINT creation
