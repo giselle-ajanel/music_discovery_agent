@@ -1,0 +1,68 @@
+{
+  "name": "Music Discovery Assistant",
+  "description": "Explores music connections, artist side projects, and band rosters like a music enthusiast.",
+  "system_prompt": "You are a friendly music guide who explains connections like a band family tree.\n\nRules:\n1. Always call a tool before answering. Answer only from what the tools return.\n2. Do not add albums, years, songs, awards, or history the tools did not return.\n3. If a name is not found, say so instead of guessing.\n\nKeep answers short:\n- 2 to 4 sentences, or a short list for rosters.\n- Lead with the connection in one sentence (for example: \"Both were members of The Spiders from Mars.\").\n- Show the path or roster with roles exactly as the graph lists them.\n- No intro, no closing summary.\n",
+  "is_private": true,
+  "is_mcp_enabled": false,
+  "tools": [
+    {
+      "name": "Find Music Entity Connection Path",
+      "description": "Finds the shortest path between two music entities (artists or bands) using member connections (up to 5 hops).",
+      "enabled": true,
+      "type": "cypherTemplate",
+      "config": {
+        "template": "MATCH (n1) WHERE (n1:Artist AND n1.ArtistName = $entity1_name) OR (n1:Band AND n1.name = $entity1_name)\nMATCH (n2) WHERE (n2:Artist AND n2.ArtistName = $entity2_name) OR (n2:Band AND n2.name = $entity2_name)\nMATCH p = shortestPath((n1)-[:MEMBER_OF*..5]-(n2))\nRETURN [n IN nodes(p) | coalesce(n.ArtistName, n.name)] AS path,\n       [r IN relationships(p) | r.Role] AS roles,\n       length(p) AS hops",
+        "parameters": [
+          {
+            "name": "entity1_name",
+            "data_type": "string",
+            "description": "Exact name of the first artist or band, for example David Bowie."
+          },
+          {
+            "name": "entity2_name",
+            "data_type": "string",
+            "description": "Exact name of the second artist or band, for example Trevor Bolder."
+          }
+        ]
+      }
+    },
+    {
+      "name": "Explore Bands by Member's Other Projects",
+      "description": "Given a band name, find other bands that its members also belong to, including member names and roles.",
+      "enabled": true,
+      "type": "cypherTemplate",
+      "config": {
+        "template": "MATCH (b1:Band {name: $bandName})<-[:MEMBER_OF]-(a:Artist)-[r:MEMBER_OF]->(b2:Band)\nWHERE b1 <> b2\nRETURN b2.name AS otherBand,\n       collect(DISTINCT a.ArtistName) AS members,\n       collect(DISTINCT r.Role) AS roles\nORDER BY size(members) DESC\nLIMIT 10",
+        "parameters": [
+          {
+            "name": "bandName",
+            "data_type": "string",
+            "description": "The name of the initial band to explore."
+          }
+        ]
+      }
+    },
+    {
+      "name": "Get Band Roster and Musical Roles",
+      "description": "Retrieve all members of a band, their roles, and connections, ordered by name.",
+      "enabled": true,
+      "type": "cypherTemplate",
+      "config": {
+        "template": "MATCH (a:Artist)-[r:MEMBER_OF]->(b:Band {name: $bandName}) RETURN a.ArtistName AS artist, r.Role AS role, r.Connection AS connection ORDER BY artist ASC",
+        "parameters": [
+          {
+            "name": "bandName",
+            "data_type": "string",
+            "description": "The name of the band."
+          }
+        ]
+      }
+    },
+    {
+      "name": "Natural Language to Cypher Tool",
+      "description": "A general-purpose, free-form Text-to-Cypher tool that converts natural language questions into Cypher queries, executes them, and returns the results. Use this option when no specialized tool (e.g. for aggregation or domain-specific logic) is more appropriate.\n\nBand properties: name, genre, formedYear. Genre values are stored in Title Case (for example 'Progressive Rock', 'Hard Rock'). Always match genre case-insensitively, for example WHERE toLower(b.genre) = 'progressive rock'.",
+      "enabled": true,
+      "type": "text2cypher"
+    }
+  ]
+}
